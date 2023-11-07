@@ -15,7 +15,7 @@ wb = openpyxl.load_workbook('orders-in.xlsx')
 sheet = wb.active
 
 #Устанавлием названия заголовков
-header_values = ['Время', 'Населенный пункт', 'Адрес', 'ФИО', 'Номер телефона', 'Номер машины']
+header_values = ['Время', 'Населенный пункт', 'Адрес', 'ФИО', 'Номер телефона', 'Номер заказа', 'Номер машины']
 
 #Удаляем те строки, которые содержать те же значения, что в верхнем массиве
 #Нужно, чтобы удалить дубликаты, которые могли быть при копировании
@@ -42,14 +42,14 @@ wb.close()
 df = pd.read_excel('orders-in.xlsx')
 
 # Группируем заказы по номеру машины
-grouped_df = df.groupby('Номер машины')
+grouped_df = df.groupby('Номер заказа')
 
 # Создаем новый DataFrame для объединенных заказов
 merged_df = pd.DataFrame(columns=df.columns)
 
 # Объединяем заказы по машинам
 for _, group in grouped_df:
-    merged_df = pd.concat([merged_df, pd.DataFrame([{'Время': f"Машина на {group['Время'].iloc[0]}", 'Населенный пункт': '', 'Адрес': '', 'ФИО': '', 'Номер телефона': '', 'Номер машины': ''}]), group], ignore_index=True)
+    merged_df = pd.concat([merged_df, pd.DataFrame([{'Время': f"Машина на {group['Время'].iloc[0]}", 'Населенный пункт': '', 'Адрес': '', 'ФИО': '', 'Номер телефона': '', 'Номер заказа': '', 'Номер машины': ''}]), group], ignore_index=True)
 
 # Выводим таблицу
 print(merged_df)
@@ -65,22 +65,22 @@ wb = openpyxl.load_workbook('orders-out.xlsx')
 # Выбираем активный лист
 ws = wb.active
 
-# Удаляем столбец F
-ws.delete_cols(6, 0)
+# # Скрываем столбец F
+ws.column_dimensions['F'].hidden = True
 
 #3.1 Объединяем ячейки начинающиеся на "Машина на..."
 # Создаем список для хранения диапазонов ячеек, которые нужно объединить
 ranges_to_merge = []
 
-# Обходим строки с первого до пятого столбца
-for row in ws.iter_rows(min_row=1, max_row=ws.max_row, min_col=1, max_col=5):
+# Обходим строки с первого до шестого столбца
+for row in ws.iter_rows(min_row=1, max_row=ws.max_row, min_col=1, max_col=6):
     if any("Машина на" in str(cell.value) for cell in row):
         # Получаем диапазон ячеек для объединения
         start_row = row[0].row
         end_row = row[0].row
         start_column = 1
-        end_column = 5
-        range_to_merge = f"A{start_row}:E{end_row}"
+        end_column = 7
+        range_to_merge = f"A{start_row}:G{end_row}"
         ranges_to_merge.append(range_to_merge)
 
         # Изменяем высоту объединенных ячеек на 30 пикселей
@@ -102,7 +102,7 @@ ws.font = font
 
 # Установка выравнивания по центру для столбцов A, B, C, D, E
 align_center = Alignment(horizontal='center', vertical='center')
-for column in ['A', 'B', 'C', 'D', 'E']:
+for column in ['A', 'B', 'C', 'D', 'E', 'F', 'G']:
     for row in range(1, ws.max_row + 1):
         cell = ws[column + str(row)]
         cell.alignment = align_center
@@ -131,8 +131,9 @@ for row in range(1, ws.max_row + 1):
 # Заменяем первую строку на объединенную ячейку с надписью "Итоговая доставка на [Сегодняшняя дата]"
 first_row = ws[1:1]
 first_row[0].value = f"Итоговая доставка на {date.today()}"
+
 #Объединяем строки
-ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=5)
+ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=7)
 #Форматируем так, как ячейки с текстом "Машина на...": полужирны, заливка и высота ячейки
 first_row[0].font = Font(bold=True)
 first_row[0].fill = PatternFill(start_color="C2E0C6", end_color="C2E0C6", fill_type="solid")
