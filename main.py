@@ -8,7 +8,10 @@ import os
 
 #1. Подготовка.... видоизменяем и удаляем файл с прошлой выгрузки
 #Удаляем данные с прошлой выгрузки
-os.remove('orders-out.xlsx')
+try:
+    os.remove('orders-out.xlsx')
+except:
+    pass
 
 #Открываем книгу и добавляем первой строкой заголовки для таблицы по заказам
 wb = openpyxl.load_workbook('orders-in.xlsx')
@@ -34,12 +37,22 @@ for col_num, value in enumerate(header_values, 1):
 
 #Сохраняем изменения в исходном файле
 wb.save('orders-in.xlsx')
-wb.close()
 
+#Закрываем книгу
+wb.close()
 
 #2. Используем pandas для группировки по машинам
 # Чтение данных из Excel файла
 df = pd.read_excel('orders-in.xlsx')
+
+#Находим количество изначальных строк в таблице (-1, ибо отнимаем строку с заголовком таблицы)
+count_original = df.shape[0]
+
+# Замена символов в номере заказа
+df['Номер заказа'] = pd.to_numeric(df['Номер заказа'], errors='coerce')
+
+# Сортировка данных по номеру машины
+df = df.sort_values('Номер заказа')
 
 # Группируем заказы по номеру машины
 grouped_df = df.groupby('Номер заказа')
@@ -47,12 +60,24 @@ grouped_df = df.groupby('Номер заказа')
 # Создаем новый DataFrame для объединенных заказов
 merged_df = pd.DataFrame(columns=df.columns)
 
+# Счетчик строк с номером заказа сколько вышло по факту
+count_default = 0
+
 # Объединяем заказы по машинам
 for _, group in grouped_df:
     merged_df = pd.concat([merged_df, pd.DataFrame([{'Время': f"Машина на {group['Время'].iloc[0]}", 'Населенный пункт': '', 'Адрес': '', 'ФИО': '', 'Номер телефона': '', 'Номер заказа': '', 'Номер машины': ''}]), group], ignore_index=True)
+    count_default += len(group)
 
 # Выводим таблицу
 print(merged_df)
+
+#Сверяем значения выгрузки до и после
+if (count_default == count_original):
+    print(f'Количество изначальных строк заказов совпадает с количестом выгруженных: {count_default}/{count_original}\n'
+          f'Хорошего тебе дня, счастья, здоровья, денег побольше тебе и твоим близким ♥')
+else: print(f"АЛАРМ! ЧТО-ТО ПОШЛО НЕ ТАК!\n"
+            f"Выгружено меньше заказов, чем было изначально:{count_default}/{count_original}\n"
+            f"Перепроверь данные, если есть заказы с дробью, то замени точку в них на запятую перед вставкой в соседний файлик")
 
 # Сохраняем данные в файл 'orders-out.xlsx'
 merged_df.to_excel('orders-out.xlsx', index=False)
@@ -144,3 +169,6 @@ wb.save('orders-out.xlsx')
 
 # Закрываем книгу
 wb.close()
+
+# Добавьте эту строку в конце кода
+input(f"Нажмите Enter для выхода...")
